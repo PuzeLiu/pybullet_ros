@@ -70,6 +70,7 @@ class FuncExecManager:
         log_info(f'Started synchronous {function_name} execution manager')
         self.log_warn = log_warn
         self.log_debug = log_debug
+        self.time_start = time.time()
 
     def time_control(self, cycle_unique_id, obj):
         class_name = str(obj.__class__)
@@ -90,7 +91,7 @@ class FuncExecManager:
         we create an additional thread to monitor the deadline
         """
         # convert frequency to time
-        time.sleep(1.0 / self.loop_rate)
+        time.sleep(max(self.cycle_unique_id / self.loop_rate - (time.time() - self.time_start), 0))
         self.log_debug('==== loop rate! ====')
         # raise flag to indicate that one loop is complete
         self.is_loop_finished = True
@@ -106,6 +107,7 @@ class FuncExecManager:
         if cycle_unique_id > sys.maxsize:
             cycle_unique_id = 0
         # run x iterations until user wants to stop (you might want to pass here a ctrl + c detection)
+        self.time_start = time.time()
         while not self.stop_condition():
             # initialize flag
             self.is_loop_finished = False
@@ -116,9 +118,10 @@ class FuncExecManager:
             thread_list = []
             for func in self.on_time_functions:
                 thread_list.append(Thread(target=self.time_control, args=(cycle_unique_id, func,)))
+                thread_list[-1].start()
             self.on_time_functions = []
-            for t in thread_list:
-                t.start()
+            # for t in thread_list:
+            #     t.start()
             # run loop function on a separate thread
             Thread(target=self.loop_thread).start()
             # wait until loop finishes

@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<launch>
+    <!-- partial configuration params for pybullet_ros node, rest will be loaded from config_file -->
+    <arg name="config_file" default="$(find pybullet_ros)/ros/config/empty_world.yaml" />
+    <arg name="plugin_import_prefix" default="pybullet_ros.plugins"/>
+    <arg name="environment" default="environment" />
+    <arg name="pybullet_gui" default="True" /> <!-- if true pybullet gui will show -->
+    <arg name="pause_simulation" default="False" /> <!-- if true, will boot with paused physics -->
+    <arg name="parallel_plugin_execution" default="False" />
+    <arg name="use_deformable_world" default="False" /> <!-- enable/disable soft body simulation -->
+    <arg name="gui_options" default="" />
+    <arg name="model_list" default="" />
+
+    <param name="/use_sim_time" value="true"/>
+
+    <!-- pybullet ros wrapper node -->
+    <node pkg="pybullet_ros" type="pybullet_ros_node" name="pybullet_ros" output="screen" required="true" >
+        <rosparam file="$(arg config_file)" command="load" />
+        <param name="environment" value="$(arg environment)" />
+        <param name="plugin_import_prefix" value="$(arg plugin_import_prefix)" />
+        <param name="pybullet_gui" value="$(arg pybullet_gui)" />
+        <param name="pause_simulation" value="$(arg pause_simulation)" />
+        <param name="parallel_plugin_execution" value="$(arg parallel_plugin_execution)" />
+        <param name="use_deformable_world" value="$(arg use_deformable_world)" />
+        <param name="gui_options" value="$(arg gui_options)" />
+
+        <rosparam param="models" subst_value="True">$(arg model_list)</rosparam>
+    </node>
+
+</launch>

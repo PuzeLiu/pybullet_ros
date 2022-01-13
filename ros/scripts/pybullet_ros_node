@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import pybullet_ros.pybullet_ros
+import pybullet_ros.pybullet_ros_wrapper
 
 if __name__ == '__main__':
-    pybullet_ros.pybullet_ros.main()
+    pybullet_ros.pybullet_ros_wrapper.main()
