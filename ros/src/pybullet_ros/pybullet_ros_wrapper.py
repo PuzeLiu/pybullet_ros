@@ -26,6 +26,7 @@ class PyBulletRosWrapper(object):
         is_gui_needed = rospy.get_param('~pybullet_gui', True)
         # get from param server if user wants to pause simulation at startup
         self.pause_simulation = rospy.get_param('~pause_simulation', False)
+        self.time_start = time.time()
 
         print('\033[34m')
         # print pybullet stuff in blue
@@ -112,7 +113,7 @@ class PyBulletRosWrapper(object):
             rospy.loginfo('Running pybullet without gui')
             # hide console output from pybullet
             rospy.loginfo('-------------------------')
-            return self.pb.connect(self.pb.SHARED_MEMORY)
+            return self.pb.connect(self.pb.SHARED_MEMORY_SERVER)
 
     def init_model(self, namespace):
         """load robot URDF model, set gravity, ground plane and environment"""
@@ -126,14 +127,14 @@ class PyBulletRosWrapper(object):
         model_root = model_tree.getroot()
 
         # redirect the $(find package)
-        package = re.search('package://(.+?)/', robot_description)
-        if package:
-            package_dir = rospkg.RosPack().get_path(package.group(1))
-            for mesh in model_root.iter('mesh'):
+        for mesh in model_root.iter('mesh'):
+            package = re.search('package://(.+?)/', mesh.get('filename'))
+            if package:
+                package_dir = rospkg.RosPack().get_path(package.group(1))
                 mesh.set('filename', mesh.get('filename').replace("package://" + package.group(1), package_dir))
 
-        basePosition = list()
-        baseOrientation = list()
+        basePosition = [0., 0., 0.]
+        baseOrientation = [0., 0., 0., 1.]
         useFixedBase = True
         # remove world link and corresponding joint
         for link in model_root.findall('link'):
@@ -147,6 +148,11 @@ class PyBulletRosWrapper(object):
                 if joint.get('type') != 'fixed':
                     useFixedBase = False
                 model_root.remove(joint)
+
+        if rospy.has_param(namespace + '/base_position'):
+            basePosition = rospy.get_param(namespace + '/base_position')
+        if rospy.has_param(namespace + '/base_orientation'):
+            baseOrientation = rospy.get_param(namespace + '/base_orientation')
 
         urdf_dir = os.path.abspath(os.path.dirname(__file__) + "../../../.urdf")
         urdf_file = os.path.join(urdf_dir, namespace + ".urdf")
@@ -184,13 +190,14 @@ class PyBulletRosWrapper(object):
     def handle_pause_physics(self, req):
         """pause simulation, raise flag to prevent pybullet to execute self.pb.stepSimulation()"""
         rospy.loginfo('pausing simulation')
-        self.pause_simulation = False
+        self.pause_simulation = True
         return []
 
     def handle_unpause_physics(self, req):
         """unpause simulation, lower flag to allow pybullet to execute self.pb.stepSimulation()"""
         rospy.loginfo('unpausing simulation')
-        self.pause_simulation = True
+        self.time_start = time.time() - self.sim_time
+        self.pause_simulation = False
         return []
 
     def pause_simulation_function(self):
@@ -206,7 +213,7 @@ class PyBulletRosWrapper(object):
         """
         This function is deprecated, we recommend the use of parallel plugin execution
         """
-        time_start = time.time()
+        self.time_start = time.time()
         while not rospy.is_shutdown():
             if not self.pause_simulation:
                 self.step_with_time()
@@ -216,7 +223,7 @@ class PyBulletRosWrapper(object):
                 # perform all the actions in a single forward dynamics simulation step such
                 # as collision detection, constraint solving and integration
             # rate.sleep()
-            time.sleep(max(self.sim_time - (time.time() - time_start), 0))
+            time.sleep(max(self.sim_time - (time.time() - self.time_start), 0))
         rospy.logwarn('killing node now...')
         # if node is killed, disconnect
         self.pb.disconnect()
