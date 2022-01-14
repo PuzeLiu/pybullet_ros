@@ -6,13 +6,16 @@ import importlib
 import time
 import rospy
 import rospkg
+import pybullet_utils.transformations
 import pybullet_data
+import xml.etree.ElementTree as ET
 
 from std_srvs.srv import Empty
 from rosgraph_msgs.msg import Clock
 from pybullet_ros.function_exec_manager import FuncExecManager
 
-class pyBulletRosWrapper(object):
+
+class PyBulletRosWrapper(object):
     """ROS wrapper class for pybullet simulator"""
     def __init__(self):
         # import pybullet
@@ -61,7 +64,7 @@ class pyBulletRosWrapper(object):
         for ns in rospy.get_param('~models', ['']):
             if ns != "":
                 model_spec = dict()
-                model_spec['model_id'] = self.init_model(ns)
+                model_spec['model_id'], model_spec['urdf_file'] = self.init_model(ns)
                 model_spec['joint_map'] = self.get_joint_map(model_spec['model_id'])
                 rospy.loginfo("loading plugin for {}: ".format(ns))
                 model_plugins = rospy.get_param(ns + "/plugins", [])
@@ -115,24 +118,39 @@ class pyBulletRosWrapper(object):
         """load robot URDF model, set gravity, ground plane and environment"""
         # get from param server the path to the URDF robot model to load at startup
         robot_description = rospy.get_param(namespace + '/robot_description', None)
+
         if not robot_description:
             rospy.logerr('{} required /robot_description param not set'.format(namespace))
             return None
+        model_tree = ET.ElementTree(ET.fromstring(robot_description))
+        model_root = model_tree.getroot()
 
         # redirect the $(find package)
         package = re.search('package://(.+?)/', robot_description)
         if package:
             package_dir = rospkg.RosPack().get_path(package.group(1))
-            robot_description = robot_description.replace("package://" + package.group(1), package_dir)
+            for mesh in model_root.iter('mesh'):
+                mesh.set('filename', mesh.get('filename').replace("package://" + package.group(1), package_dir))
+
+        basePosition = list()
+        baseOrientation = list()
+        useFixedBase = True
+        # remove world link and corresponding joint
+        for link in model_root.findall('link'):
+            if link.get('name') == 'world':
+                model_root.remove(link)
+        for joint in model_root.findall('joint'):
+            if joint.find('parent').get('link') == 'world':
+                origin = joint.find('origin')
+                basePosition = [float(i) for i in origin.get('xyz').split(' ')]
+                baseOrientation = pybullet_utils.transformations.quaternion_from_euler(*[float(i) for i in origin.get('rpy').split(' ')])
+                if joint.get('type') != 'fixed':
+                    useFixedBase = False
+                model_root.remove(joint)
 
         urdf_dir = os.path.abspath(os.path.dirname(__file__) + "../../../.urdf")
-        if not os.path.exists(urdf_dir):
-            os.makedirs(urdf_dir)
-        rospy.loginfo('generating urdf model for {} from robot_description under: {}'.format(namespace, urdf_dir))
         urdf_file = os.path.join(urdf_dir, namespace + ".urdf")
-        file = open(urdf_file, 'w')
-        file.write(robot_description)
-        file.close()
+        model_tree.write(urdf_file, encoding='utf-8')
 
         # load robot from URDF model
         # user decides if inertia is computed automatically by pybullet or custom
@@ -141,7 +159,9 @@ class pyBulletRosWrapper(object):
             # combining several boolean flags using "or" according to pybullet documentation
             urdf_flags = self.pb.URDF_USE_INERTIA_FROM_FILE
             rospy.loginfo("{} use inertia from file".format(namespace))
-        return self.pb.loadURDF(urdf_file, flags=urdf_flags)
+
+        return self.pb.loadURDF(urdf_file, basePosition=basePosition, baseOrientation=baseOrientation,
+                         useFixedBase=useFixedBase, flags=urdf_flags), urdf_file
 
     def handle_reset_simulation(self, req):
         """Callback to handle the service offered by this node to reset the simulation"""
@@ -225,7 +245,7 @@ class pyBulletRosWrapper(object):
 def main():
     """function called by pybullet_ros_node script"""
     rospy.init_node('pybullet_ros', anonymous=False)  # node name gets overwritten if launched by a launch file
-    pybullet_ros_interface = pyBulletRosWrapper()
+    pybullet_ros_interface = PyBulletRosWrapper()
     pybullet_ros_interface.start_pybullet_ros_wrapper()
 
 

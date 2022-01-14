@@ -1,5 +1,6 @@
 # python byte code
 *.pyc
+.urdf/
 
 # automatically generated robot urdf from xacro
 acrobat_robot.urdf
