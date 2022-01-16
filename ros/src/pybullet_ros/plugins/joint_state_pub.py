@@ -10,14 +10,14 @@ from sensor_msgs.msg import JointState
 
 
 class JoinStatePub:
-    def __init__(self, pybullet, namespace, model_spec, **kargs):
+    def __init__(self, pybullet, namespace, model_spec, **kwargs):
         # get "import pybullet as pb" and store in self.pb
         self.pb = pybullet
         self.namespace = namespace
         self.model_spec = model_spec
         # register this node in the network as a publisher in /joint_states topic
         self.pub_joint_states = rospy.Publisher(namespace + '/joint_states', JointState, queue_size=1)
-        self.period = rospy.Duration(1 / kargs['publish_rate'])
+        self.period = rospy.Duration(1 / kwargs['publish_rate'])
         self.joint_msg = JointState()
         for name in self.model_spec['joint_map']:
             self.joint_msg.name.append(name)

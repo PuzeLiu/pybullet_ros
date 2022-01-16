@@ -149,12 +149,16 @@ class PyBulletRosWrapper(object):
                     useFixedBase = False
                 model_root.remove(joint)
 
+        if rospy.has_param(namespace + '/fixed_base'):
+            useFixedBase = rospy.get_param(namespace + '/fixed_base')
         if rospy.has_param(namespace + '/base_position'):
             basePosition = rospy.get_param(namespace + '/base_position')
         if rospy.has_param(namespace + '/base_orientation'):
             baseOrientation = rospy.get_param(namespace + '/base_orientation')
 
         urdf_dir = os.path.abspath(os.path.dirname(__file__) + "../../../.urdf")
+        if not os.path.exists(urdf_dir):
+            os.makedirs(urdf_dir)
         urdf_file = os.path.join(urdf_dir, namespace + ".urdf")
         model_tree.write(urdf_file, encoding='utf-8')
 
@@ -167,7 +171,7 @@ class PyBulletRosWrapper(object):
             rospy.loginfo("{} use inertia from file".format(namespace))
 
         return self.pb.loadURDF(urdf_file, basePosition=basePosition, baseOrientation=baseOrientation,
-                         useFixedBase=useFixedBase, flags=urdf_flags), urdf_file
+                                useFixedBase=useFixedBase, flags=urdf_flags), urdf_file
 
     def handle_reset_simulation(self, req):
         """Callback to handle the service offered by this node to reset the simulation"""
