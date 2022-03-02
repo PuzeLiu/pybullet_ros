@@ -81,6 +81,15 @@ class PyBulletRosWrapper(object):
                     self.plugins.append(obj)
 
                 self.models[ns] = model_spec
+
+        # Postprocess after loading all models (such as disable collision)
+        post_processor_plugin = rospy.get_param('post_processor', {'module': 'pybullet_ros.plugins.post_processor',
+                                                                   'class': 'PostProcessor'})
+        post_processor = getattr(importlib.import_module(post_processor_plugin['module']),
+                                 post_processor_plugin['class'])(self.pb, self.models)
+        rospy.loginfo('Load post processor')
+        post_processor.load()
+
         print('\033[0m')
         rospy.loginfo('pybullet ROS wrapper initialized')
 
