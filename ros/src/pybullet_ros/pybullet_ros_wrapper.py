@@ -21,7 +21,7 @@ class PyBulletRosWrapper(object):
         # import pybullet
         self.pb = importlib.import_module('pybullet')
         # get from param server the frequency at which to run the simulation
-        self.loop_rate = rospy.get_param('~loop_rate', 80.0)
+        self.loop_rate = rospy.get_param('~loop_rate', 240.0)
         # query from param server if gui is needed
         is_gui_needed = rospy.get_param('~pybullet_gui', True)
         # get from param server if user wants to pause simulation at startup
