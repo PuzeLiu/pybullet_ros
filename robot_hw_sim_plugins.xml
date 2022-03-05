@@ -1,0 +1,10 @@
+<library path="lib/libdefault_robot_hw_sim">
+    <class
+            name="ros_control_interface/DefaultRobotHWSim"
+            type="ros_control_interface::DefaultRobotHWSim"
+            base_class_type="ros_control_interface::RobotHWSim">
+        <description>
+            A default robot simulation interface which constructs joint handles from an URDF.
+        </description>
+    </class>
+</library>

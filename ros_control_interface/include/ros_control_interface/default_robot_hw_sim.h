@@ -12,6 +12,7 @@
 #include <joint_limits_interface/joint_limits_rosparam.h>
 #include <joint_limits_interface/joint_limits_urdf.h>
 #include <angles/angles.h>
+#include <pluginlib/class_list_macros.h>
 
 #include "robot_hw_sim.h"
 
@@ -23,7 +24,7 @@ namespace ros_control_interface{
 			const std::string& robot_namespace,
 			ros::NodeHandle model_nh,
 			const urdf::Model *const urdf_model,
-			std::vector<transmission_interface::TransmissionInfo> transmissions) = 0;
+			std::vector<transmission_interface::TransmissionInfo> transmissions);
 
 		virtual void readSim(ros::Time time, ros::Duration period);
 
@@ -75,7 +76,7 @@ namespace ros_control_interface{
 		std::vector<double> last_joint_position_command_;
 		std::vector<double> joint_velocity_command_;
 
-		std::vector<gazebo::physics::JointPtr> sim_joints_;
+//		std::vector<gazebo::physics::JointPtr> sim_joints_;
 
 		std::string physics_type_;
 

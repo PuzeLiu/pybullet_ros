@@ -15,8 +15,9 @@ namespace ros_control_interface
 			ROS_ERROR_STREAM("Unable to find " << model_nh_.getNamespace() << "/robot_description");
 			return false;
 		}
-		urdf::Model urdf_model;
-		urdf_model.initString(robot_description_);
+
+        robot_hw_sim_type_str_ = model_nh_.param<std::string>("robotSimType",
+                                                              "ros_control_interface/DefaultRobotHWSim");
 
 		// Decide the plugin control period
 		ros::Duration pybullet_period(1 / pybullet_nh.param("loop_rate", 100.));
@@ -60,8 +61,32 @@ namespace ros_control_interface
 			return false;
 		}
 
+        try {
+            robot_hw_sim_loader_.reset
+                    (new pluginlib::ClassLoader<ros_control_interface::RobotHWSim>
+                             ("pybullet_ros","ros_control_interface::RobotHWSim"));
 
+            robot_hw_sim_ = robot_hw_sim_loader_->createInstance(robot_hw_sim_type_str_);
 
+            urdf::Model urdf_model;
+            urdf_model.initString(robot_description_);
+            if(!robot_hw_sim_->initSim(robot_namespace_, model_nh_, &urdf_model, transmissions_))
+            {
+                ROS_FATAL_NAMED("ros_control_interface","Could not initialize robot simulation interface");
+                return false;
+            }
+
+            // Create the controller manager
+            ROS_DEBUG_STREAM_NAMED("ros_control_plugin","Loading controller_manager");
+            controller_manager_.reset
+                    (new controller_manager::ControllerManager(robot_hw_sim_.get(), model_nh_));
+
+        }  catch(pluginlib::LibraryLoadException &ex)
+        {
+            ROS_FATAL_STREAM_NAMED("gazebo_ros_control","Failed to create robot simulation interface loader: "<<ex.what());
+        }
+
+        ROS_INFO_NAMED("ros_control_interface", "Loaded ros_control_interface.");
 		return true;
 	}
 

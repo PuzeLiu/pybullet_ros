@@ -1,15 +1,15 @@
 <?xml version="1.0"?>
 <package format="2">
     <name>pybullet_ros</name>
-    <version>2.0.0</version>
+    <version>0.0.1</version>
     <description>
         ROS wrapper for pybullet simulator
     </description>
 
     <license>MIT</license>
 
-    <author email="oscar.lima@dfki.de">Oscar Lima</author>
-    <maintainer email="oscar.lima@dfki.de">Oscar Lima</maintainer>
+    <author email="puze@robot-learning.de">Puze Liu</author>
+    <maintainer email="puze@robot-learning.de">Puze Liu</maintainer>
 
     <buildtool_depend>catkin</buildtool_depend>
     <depend>roscpp</depend>
@@ -24,4 +24,7 @@
     <depend>urdf</depend>
     <depend>angles</depend>
 
+    <export>
+        <pybullet_ros plugin="${prefix}/robot_hw_sim_plugins.xml"/>
+    </export>
 </package>

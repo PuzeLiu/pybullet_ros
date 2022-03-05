@@ -128,201 +128,201 @@ namespace ros_control_interface{
 				ROS_WARN_STREAM("Deprecated syntax, please prepend 'hardware_interface/' to '" << hardware_interface << "' within the <hardwareInterface> tag in joint '" << joint_names_[j] << "'.");
 			}
 
-			// Get the gazebo joint that corresponds to the robot joint.
-			//ROS_DEBUG_STREAM_NAMED("default_robot_hw_sim", "Getting pointer to gazebo joint: "
-			//  << joint_names_[j]);
-			gazebo::physics::JointPtr joint = parent_model->GetJoint(joint_names_[j]);
-			if (!joint)
-			{
-				ROS_ERROR_STREAM_NAMED("default_robot_hw", "This robot has a joint named \"" << joint_names_[j]
-																							 << "\" which is not in the gazebo model.");
-				return false;
-			}
-			sim_joints_.push_back(joint);
-
-			// get physics engine type
-#if GAZEBO_MAJOR_VERSION >= 8
-			gazebo::physics::PhysicsEnginePtr physics = gazebo::physics::get_world()->Physics();
-#else
-			gazebo::physics::PhysicsEnginePtr physics = gazebo::physics::get_world()->GetPhysicsEngine();
-#endif
-			physics_type_ = physics->GetType();
-			if (physics_type_.empty())
-			{
-				ROS_WARN_STREAM_NAMED("default_robot_hw_sim", "No physics type found.");
-			}
-
-			registerJointLimits(joint_names_[j], joint_handle, joint_control_methods_[j],
-				joint_limit_nh, urdf_model,
-				&joint_types_[j], &joint_lower_limits_[j], &joint_upper_limits_[j],
-				&joint_effort_limits_[j]);
-			if (joint_control_methods_[j] != EFFORT)
-			{
-				// Initialize the PID controller. If no PID gain values are found, use joint->SetAngle() or
-				// joint->SetParam("vel") to control the joint.
-				const ros::NodeHandle nh(robot_namespace + "/gazebo_ros_control/pid_gains/" +
-					joint_names_[j]);
-				if (pid_controllers_[j].init(nh))
-				{
-					switch (joint_control_methods_[j])
-					{
-					case POSITION:
-						joint_control_methods_[j] = POSITION_PID;
-						break;
-					case VELOCITY:
-						joint_control_methods_[j] = VELOCITY_PID;
-						break;
-					}
-				}
-				else
-				{
-					// joint->SetParam("fmax") must be called if joint->SetAngle() or joint->SetParam("vel") are
-					// going to be called. joint->SetParam("fmax") must *not* be called if joint->SetForce() is
-					// going to be called.
-#if GAZEBO_MAJOR_VERSION > 2
-					joint->SetParam("fmax", 0, joint_effort_limits_[j]);
-#else
-					joint->SetMaxForce(0, joint_effort_limits_[j]);
-#endif
-				}
-			}
+//			// Get the gazebo joint that corresponds to the robot joint.
+//			//ROS_DEBUG_STREAM_NAMED("default_robot_hw_sim", "Getting pointer to gazebo joint: "
+//			//  << joint_names_[j]);
+//			gazebo::physics::JointPtr joint = parent_model->GetJoint(joint_names_[j]);
+//			if (!joint)
+//			{
+//				ROS_ERROR_STREAM_NAMED("default_robot_hw", "This robot has a joint named \"" << joint_names_[j]
+//																							 << "\" which is not in the gazebo model.");
+//				return false;
+//			}
+//			sim_joints_.push_back(joint);
+//
+//			// get physics engine type
+//#if GAZEBO_MAJOR_VERSION >= 8
+//			gazebo::physics::PhysicsEnginePtr physics = gazebo::physics::get_world()->Physics();
+//#else
+//			gazebo::physics::PhysicsEnginePtr physics = gazebo::physics::get_world()->GetPhysicsEngine();
+//#endif
+//			physics_type_ = physics->GetType();
+//			if (physics_type_.empty())
+//			{
+//				ROS_WARN_STREAM_NAMED("default_robot_hw_sim", "No physics type found.");
+//			}
+//
+//			registerJointLimits(joint_names_[j], joint_handle, joint_control_methods_[j],
+//				joint_limit_nh, urdf_model,
+//				&joint_types_[j], &joint_lower_limits_[j], &joint_upper_limits_[j],
+//				&joint_effort_limits_[j]);
+//			if (joint_control_methods_[j] != EFFORT)
+//			{
+//				// Initialize the PID controller. If no PID gain values are found, use joint->SetAngle() or
+//				// joint->SetParam("vel") to control the joint.
+//				const ros::NodeHandle nh(robot_namespace + "/gazebo_ros_control/pid_gains/" +
+//					joint_names_[j]);
+//				if (pid_controllers_[j].init(nh))
+//				{
+//					switch (joint_control_methods_[j])
+//					{
+//					case POSITION:
+//						joint_control_methods_[j] = POSITION_PID;
+//						break;
+//					case VELOCITY:
+//						joint_control_methods_[j] = VELOCITY_PID;
+//						break;
+//					}
+//				}
+//				else
+//				{
+//					// joint->SetParam("fmax") must be called if joint->SetAngle() or joint->SetParam("vel") are
+//					// going to be called. joint->SetParam("fmax") must *not* be called if joint->SetForce() is
+//					// going to be called.
+//#if GAZEBO_MAJOR_VERSION > 2
+//					joint->SetParam("fmax", 0, joint_effort_limits_[j]);
+//#else
+//					joint->SetMaxForce(0, joint_effort_limits_[j]);
+//#endif
+//				}
+//			}
 		}
-
-		// Register interfaces
-		registerInterface(&js_interface_);
-		registerInterface(&ej_interface_);
-		registerInterface(&pj_interface_);
-		registerInterface(&vj_interface_);
-
-		// Initialize the emergency stop code.
-		e_stop_active_ = false;
-		last_e_stop_active_ = false;
-
+//
+//		// Register interfaces
+//		registerInterface(&js_interface_);
+//		registerInterface(&ej_interface_);
+//		registerInterface(&pj_interface_);
+//		registerInterface(&vj_interface_);
+//
+//		// Initialize the emergency stop code.
+//		e_stop_active_ = false;
+//		last_e_stop_active_ = false;
+//
 		return true;
 	}
 
 	void DefaultRobotHWSim::readSim(ros::Time time, ros::Duration period)
 	{
-		for(unsigned int j=0; j < n_dof_; j++)
-		{
-			// Gazebo has an interesting API...
-#if GAZEBO_MAJOR_VERSION >= 8
-			double position = sim_joints_[j]->Position(0);
-#else
-			double position = sim_joints_[j]->GetAngle(0).Radian();
-#endif
-			if (joint_types_[j] == urdf::Joint::PRISMATIC)
-			{
-				joint_position_[j] = position;
-			}
-			else
-			{
-				joint_position_[j] += angles::shortest_angular_distance(joint_position_[j],
-					position);
-			}
-			joint_velocity_[j] = sim_joints_[j]->GetVelocity(0);
-			joint_effort_[j] = sim_joints_[j]->GetForce((unsigned int)(0));
-		}
+//		for(unsigned int j=0; j < n_dof_; j++)
+//		{
+//			// Gazebo has an interesting API...
+//#if GAZEBO_MAJOR_VERSION >= 8
+//			double position = sim_joints_[j]->Position(0);
+//#else
+//			double position = sim_joints_[j]->GetAngle(0).Radian();
+//#endif
+//			if (joint_types_[j] == urdf::Joint::PRISMATIC)
+//			{
+//				joint_position_[j] = position;
+//			}
+//			else
+//			{
+//				joint_position_[j] += angles::shortest_angular_distance(joint_position_[j],
+//					position);
+//			}
+//			joint_velocity_[j] = sim_joints_[j]->GetVelocity(0);
+//			joint_effort_[j] = sim_joints_[j]->GetForce((unsigned int)(0));
+//		}
 	}
 
 	void DefaultRobotHWSim::writeSim(ros::Time time, ros::Duration period)
 	{
-		// If the E-stop is active, joints controlled by position commands will maintain their positions.
-		if (e_stop_active_)
-		{
-			if (!last_e_stop_active_)
-			{
-				last_joint_position_command_ = joint_position_;
-				last_e_stop_active_ = true;
-			}
-			joint_position_command_ = last_joint_position_command_;
-		}
-		else
-		{
-			last_e_stop_active_ = false;
-		}
-
-		ej_sat_interface_.enforceLimits(period);
-		ej_limits_interface_.enforceLimits(period);
-		pj_sat_interface_.enforceLimits(period);
-		pj_limits_interface_.enforceLimits(period);
-		vj_sat_interface_.enforceLimits(period);
-		vj_limits_interface_.enforceLimits(period);
-
-		for(unsigned int j=0; j < n_dof_; j++)
-		{
-			switch (joint_control_methods_[j])
-			{
-			case EFFORT:
-			{
-				const double effort = e_stop_active_ ? 0 : joint_effort_command_[j];
-				sim_joints_[j]->SetForce(0, effort);
-			}
-				break;
-
-			case POSITION:
-#if GAZEBO_MAJOR_VERSION >= 9
-				sim_joints_[j]->SetPosition(0, joint_position_command_[j], true);
-#else
-				sim_joints_[j]->SetPosition(0, joint_position_command_[j]);
-#endif
-				break;
-
-			case POSITION_PID:
-			{
-				double error;
-				switch (joint_types_[j])
-				{
-				case urdf::Joint::REVOLUTE:
-					angles::shortest_angular_distance_with_limits(joint_position_[j],
-						joint_position_command_[j],
-						joint_lower_limits_[j],
-						joint_upper_limits_[j],
-						error);
-					break;
-				case urdf::Joint::CONTINUOUS:
-					error = angles::shortest_angular_distance(joint_position_[j],
-						joint_position_command_[j]);
-					break;
-				default:
-					error = joint_position_command_[j] - joint_position_[j];
-				}
-
-				const double effort_limit = joint_effort_limits_[j];
-				const double effort = clamp(pid_controllers_[j].computeCommand(error, period),
-					-effort_limit, effort_limit);
-				sim_joints_[j]->SetForce(0, effort);
-			}
-				break;
-
-			case VELOCITY:
-#if GAZEBO_MAJOR_VERSION > 2
-				if (physics_type_.compare("dart") == 0)
-        {
-          sim_joints_[j]->SetVelocity(0, e_stop_active_ ? 0 : joint_velocity_command_[j]);
-        }
-        else
-        {
-          sim_joints_[j]->SetParam("vel", 0, e_stop_active_ ? 0 : joint_velocity_command_[j]);
-        }
-#else
-				sim_joints_[j]->SetVelocity(0, e_stop_active_ ? 0 : joint_velocity_command_[j]);
-#endif
-				break;
-
-			case VELOCITY_PID:
-				double error;
-				if (e_stop_active_)
-					error = -joint_velocity_[j];
-				else
-					error = joint_velocity_command_[j] - joint_velocity_[j];
-				const double effort_limit = joint_effort_limits_[j];
-				const double effort = clamp(pid_controllers_[j].computeCommand(error, period),
-					-effort_limit, effort_limit);
-				sim_joints_[j]->SetForce(0, effort);
-				break;
-			}
-		}
+//		// If the E-stop is active, joints controlled by position commands will maintain their positions.
+//		if (e_stop_active_)
+//		{
+//			if (!last_e_stop_active_)
+//			{
+//				last_joint_position_command_ = joint_position_;
+//				last_e_stop_active_ = true;
+//			}
+//			joint_position_command_ = last_joint_position_command_;
+//		}
+//		else
+//		{
+//			last_e_stop_active_ = false;
+//		}
+//
+//		ej_sat_interface_.enforceLimits(period);
+//		ej_limits_interface_.enforceLimits(period);
+//		pj_sat_interface_.enforceLimits(period);
+//		pj_limits_interface_.enforceLimits(period);
+//		vj_sat_interface_.enforceLimits(period);
+//		vj_limits_interface_.enforceLimits(period);
+//
+//		for(unsigned int j=0; j < n_dof_; j++)
+//		{
+//			switch (joint_control_methods_[j])
+//			{
+//			case EFFORT:
+//			{
+//				const double effort = e_stop_active_ ? 0 : joint_effort_command_[j];
+//				sim_joints_[j]->SetForce(0, effort);
+//			}
+//				break;
+//
+//			case POSITION:
+//#if GAZEBO_MAJOR_VERSION >= 9
+//				sim_joints_[j]->SetPosition(0, joint_position_command_[j], true);
+//#else
+//				sim_joints_[j]->SetPosition(0, joint_position_command_[j]);
+//#endif
+//				break;
+//
+//			case POSITION_PID:
+//			{
+//				double error;
+//				switch (joint_types_[j])
+//				{
+//				case urdf::Joint::REVOLUTE:
+//					angles::shortest_angular_distance_with_limits(joint_position_[j],
+//						joint_position_command_[j],
+//						joint_lower_limits_[j],
+//						joint_upper_limits_[j],
+//						error);
+//					break;
+//				case urdf::Joint::CONTINUOUS:
+//					error = angles::shortest_angular_distance(joint_position_[j],
+//						joint_position_command_[j]);
+//					break;
+//				default:
+//					error = joint_position_command_[j] - joint_position_[j];
+//				}
+//
+//				const double effort_limit = joint_effort_limits_[j];
+//				const double effort = clamp(pid_controllers_[j].computeCommand(error, period),
+//					-effort_limit, effort_limit);
+//				sim_joints_[j]->SetForce(0, effort);
+//			}
+//				break;
+//
+//			case VELOCITY:
+//#if GAZEBO_MAJOR_VERSION > 2
+//				if (physics_type_.compare("dart") == 0)
+//        {
+//          sim_joints_[j]->SetVelocity(0, e_stop_active_ ? 0 : joint_velocity_command_[j]);
+//        }
+//        else
+//        {
+//          sim_joints_[j]->SetParam("vel", 0, e_stop_active_ ? 0 : joint_velocity_command_[j]);
+//        }
+//#else
+//				sim_joints_[j]->SetVelocity(0, e_stop_active_ ? 0 : joint_velocity_command_[j]);
+//#endif
+//				break;
+//
+//			case VELOCITY_PID:
+//				double error;
+//				if (e_stop_active_)
+//					error = -joint_velocity_[j];
+//				else
+//					error = joint_velocity_command_[j] - joint_velocity_[j];
+//				const double effort_limit = joint_effort_limits_[j];
+//				const double effort = clamp(pid_controllers_[j].computeCommand(error, period),
+//					-effort_limit, effort_limit);
+//				sim_joints_[j]->SetForce(0, effort);
+//				break;
+//			}
+//		}
 	}
 
 	void DefaultRobotHWSim::eStopActive(const bool active)
@@ -451,6 +451,6 @@ namespace ros_control_interface{
 			}
 		}
 	}
-
-
 }
+
+PLUGINLIB_EXPORT_CLASS(ros_control_interface::DefaultRobotHWSim, ros_control_interface::RobotHWSim)

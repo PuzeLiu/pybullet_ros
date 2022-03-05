@@ -52,6 +52,7 @@ include_directories(ros_control_interface/include
 set(SOURCES
     ros_control_interface/src/pybullet_ros_control_pybind.cpp
     ros_control_interface/src/pybullet_ros_control_plugin.cpp
+    ros_control_interface/src/default_robot_hw_sim.cpp
     )
 
 pybind11_add_module(pybullet_ros_control_plugin_py
