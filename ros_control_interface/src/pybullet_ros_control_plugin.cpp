@@ -1,3 +1,26 @@
+/*
+ * MIT License
+ * Copyright (c) 2022 Puze Liu
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
 #include "ros/ros.h"
 #include "urdf/model.h"
 #include "ros_control_interface/pybullet_ros_control_plugin.h"
@@ -77,13 +100,13 @@ namespace ros_control_interface
             }
 
             // Create the controller manager
-            ROS_DEBUG_STREAM_NAMED("ros_control_plugin","Loading controller_manager");
+            ROS_DEBUG_STREAM_NAMED("ros_control_interface","Loading controller_manager");
             controller_manager_.reset
                     (new controller_manager::ControllerManager(robot_hw_sim_.get(), model_nh_));
 
         }  catch(pluginlib::LibraryLoadException &ex)
         {
-            ROS_FATAL_STREAM_NAMED("gazebo_ros_control","Failed to create robot simulation interface loader: "<<ex.what());
+            ROS_FATAL_STREAM_NAMED("ros_control_interface","Failed to create robot simulation interface loader: "<<ex.what());
         }
 
         ROS_INFO_NAMED("ros_control_interface", "Loaded ros_control_interface.");
@@ -94,5 +117,59 @@ namespace ros_control_interface
 	void PybulletRosControlPlugin::eStopCB(const std_msgs::BoolConstPtr& e_stop_active)
 	{
 		e_stop_active_ = e_stop_active->data;
+	}
+
+	// Called by the world update start event
+	std::vector<double> PybulletRosControlPlugin::Update(double sim_time,
+		std::vector<double> &joint_pos,
+		std::vector<double> &joint_vel,
+		std::vector<double> &joint_effort)
+	{
+		ros::Time sim_time_ros(sim_time);
+		ros::Duration sim_period = sim_time_ros - last_update_sim_time_ros_;
+
+		robot_hw_sim_->eStopActive(e_stop_active_);
+
+		// Check if we should update the controllers
+		if(sim_period >= control_period_) {
+			// Store this simulation time
+			last_update_sim_time_ros_ = sim_time_ros;
+
+			// Update the robot simulation with the state of the gazebo model
+			robot_hw_sim_->joint_position_ = joint_pos;
+			robot_hw_sim_->readSim(sim_time_ros, sim_period, joint_pos, joint_vel, joint_effort);
+
+			// Compute the controller commands
+			bool reset_ctrlrs;
+			if (e_stop_active_)
+			{
+				reset_ctrlrs = false;
+				last_e_stop_active_ = true;
+			}
+			else
+			{
+				if (last_e_stop_active_)
+				{
+					reset_ctrlrs = true;
+					last_e_stop_active_ = false;
+				}
+				else
+				{
+					reset_ctrlrs = false;
+				}
+			}
+			controller_manager_->update(sim_time_ros, sim_period, reset_ctrlrs);
+		}
+
+		// Update the gazebo model with the result of the controller
+		// computation
+		robot_hw_sim_->writeSim(sim_time_ros, sim_time_ros - last_write_sim_time_ros_);
+		last_write_sim_time_ros_ = sim_time_ros;
+		return robot_hw_sim_->joint_command_out_;
+	}
+
+	void PybulletRosControlPlugin::Unload()
+	{
+		robot_hw_sim_.reset();
 	}
 }

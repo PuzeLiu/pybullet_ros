@@ -7,9 +7,10 @@ find_package(catkin REQUIRED COMPONENTS
     std_msgs
     cv_bridge
     roscpp
+    control_toolbox
+    controller_manager
     hardware_interface
     transmission_interface
-    controller_manager
     joint_limits_interface
     urdf
     angles
@@ -22,6 +23,7 @@ catkin_package(
     CATKIN_DEPENDS
     roscpp
     std_msgs
+    control_toolbox
     controller_manager
     control_toolbox
     hardware_interface
@@ -30,7 +32,7 @@ catkin_package(
     urdf
     angles
     INCLUDE_DIRS ros_control_interface/include
-    LIBRARIES ${PROJECT_NAME} default_robot_hw_sim
+    LIBRARIES default_robot_hw_sim
     DEPENDS EIGEN3
 )
 
@@ -46,18 +48,16 @@ include_directories(ros_control_interface/include
     ${EIGEN3_INCLUDE_DIRS}
     )
 
-#add_library(default_robot_hw_sim ros_control_interface/src/default_robot_hw_sim.cpp)
-#target_link_libraries(default_robot_hw_sim ${catkin_LIBRARIES})
+add_library(default_robot_hw_sim ros_control_interface/src/default_robot_hw_sim.cpp)
+target_link_libraries(default_robot_hw_sim ${catkin_LIBRARIES})
 
 set(SOURCES
     ros_control_interface/src/pybullet_ros_control_pybind.cpp
     ros_control_interface/src/pybullet_ros_control_plugin.cpp
-    ros_control_interface/src/default_robot_hw_sim.cpp
     )
 
 pybind11_add_module(pybullet_ros_control_plugin_py
     ${SOURCES}
-#    ros_control_interface/src/default_robot_hw_sim.cpp
     )
 target_link_libraries(pybullet_ros_control_plugin_py PRIVATE ${catkin_LIBRARIES})
 
