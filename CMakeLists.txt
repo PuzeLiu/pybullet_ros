@@ -32,7 +32,7 @@ catkin_package(
     urdf
     angles
     INCLUDE_DIRS ros_control_interface/include
-    LIBRARIES default_robot_hw_sim
+    LIBRARIES pybullet_default_robot_hw_sim
     DEPENDS EIGEN3
 )
 
@@ -48,8 +48,8 @@ include_directories(ros_control_interface/include
     ${EIGEN3_INCLUDE_DIRS}
     )
 
-add_library(default_robot_hw_sim ros_control_interface/src/default_robot_hw_sim.cpp)
-target_link_libraries(default_robot_hw_sim ${catkin_LIBRARIES})
+add_library(pybullet_default_robot_hw_sim ros_control_interface/src/default_robot_hw_sim.cpp)
+target_link_libraries(pybullet_default_robot_hw_sim ${catkin_LIBRARIES})
 
 set(SOURCES
     ros_control_interface/src/pybullet_ros_control_pybind.cpp

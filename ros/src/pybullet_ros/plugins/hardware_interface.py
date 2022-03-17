@@ -21,21 +21,22 @@ class HardwareInterface:
         self.pb_joint_control_mode = list()
         ros_control_modes = self.plugin_interface.get_joint_control_methods()
         for i, joint_name in enumerate(self.joint_names):
-            self.pb_joint_idx.append(model_spec['joint_map'][joint_name][1])
-            if ros_control_modes[i] == pbrc.ControlMethod.POSITION:
-                self.pb_joint_control_mode.append(self.pb_client.POSITION_CONTROL)
-            elif ros_control_modes[i] == pbrc.ControlMethod.VELOCITY:
-                self.pb_joint_control_mode.append(self.pb_client.VELOCITY_CONTROL)
-                self.pb_client.setJointMotorControl2(*model_spec['joint_map'][joint_name],
-                                                     controlMode=self.pb_client.VELOCITY_CONTROL, force=0)
-            elif ros_control_modes[i] == pbrc.ControlMethod.EFFORT or \
-                    ros_control_modes[i] == pbrc.ControlMethod.POSITION_PID or \
-                    ros_control_modes[i] == pbrc.ControlMethod.VELOCITY_PID:
-                self.pb_joint_control_mode.append(self.pb_client.TORQUE_CONTROL)
-                self.pb_client.setJointMotorControl2(*model_spec['joint_map'][joint_name],
-                                                     controlMode=self.pb_client.VELOCITY_CONTROL, force=0)
-            else:
-                raise rospy.INFO("Unknown Control Mode for joint: ", joint_name)
+            if joint_name in model_spec['joint_map']:
+                self.pb_joint_idx.append(model_spec['joint_map'][joint_name][1])
+                if ros_control_modes[i] == pbrc.ControlMethod.POSITION:
+                    self.pb_joint_control_mode.append(self.pb_client.POSITION_CONTROL)
+                elif ros_control_modes[i] == pbrc.ControlMethod.VELOCITY:
+                    self.pb_joint_control_mode.append(self.pb_client.VELOCITY_CONTROL)
+                    self.pb_client.setJointMotorControl2(*model_spec['joint_map'][joint_name],
+                                                         controlMode=self.pb_client.VELOCITY_CONTROL, force=0)
+                elif ros_control_modes[i] == pbrc.ControlMethod.EFFORT or \
+                        ros_control_modes[i] == pbrc.ControlMethod.POSITION_PID or \
+                        ros_control_modes[i] == pbrc.ControlMethod.VELOCITY_PID:
+                    self.pb_joint_control_mode.append(self.pb_client.TORQUE_CONTROL)
+                    self.pb_client.setJointMotorControl2(*model_spec['joint_map'][joint_name],
+                                                         controlMode=self.pb_client.VELOCITY_CONTROL, force=0)
+                else:
+                    raise rospy.INFO("Unknown Control Mode for joint: ", joint_name)
 
     def execute(self, time):
         joint_states = np.array(self.pb_client.getJointStates(self.model_id, self.pb_joint_idx), dtype=object)
