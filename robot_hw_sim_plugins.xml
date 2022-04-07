@@ -1,4 +1,4 @@
-<library path="lib/libdefault_robot_hw_sim">
+<library path="lib/libpybullet_default_robot_hw_sim">
     <class
             name="ros_control_interface/DefaultRobotHWSim"
             type="ros_control_interface::DefaultRobotHWSim"
